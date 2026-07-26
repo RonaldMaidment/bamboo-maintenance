@@ -158,6 +158,7 @@ function renderActive() {
         <div>${statusBadge}</div>
       </div>
       ${t.description ? `<div class="task-desc">${escapeHtml(t.description)}</div>` : ''}
+      ${t.note ? `<div class="task-note">📝 ${escapeHtml(t.note)}</div>` : ''}
       <div class="task-actions">
         ${state.isManager && t.status === 'requested' ? `<button class="btn btn-primary btn-small" data-action="show-allocate" data-id="${t.id}">Allocate task</button>` : ''}
         ${state.isManager && t.status === 'allocated' ? `<button class="btn btn-ghost btn-small" data-action="show-allocate" data-id="${t.id}">Reallocate</button>` : ''}
@@ -185,6 +186,7 @@ function renderLog(filter = '') {
       <td>${t.priority ? `<span class="badge badge-${t.priority}">${t.priority}</span>` : '—'}</td>
       <td>${escapeHtml(t.requestedBy)}</td>
       <td>${escapeHtml(t.assignedTo || '—')}</td>
+      <td>${escapeHtml(t.note || '—')}</td>
       <td>${escapeHtml(t.completedBy)}</td>
       <td>${fmtDate(t.dateRequested)}</td>
       <td>${fmtDate(t.dateCompleted)}</td>
@@ -309,6 +311,9 @@ el('activeList').addEventListener('click', (e) => {
         <select id="allocPriority" style="width:100%">
           ${['Low', 'Medium', 'High', 'Urgent'].map((p) => `<option value="${p}" ${task.priority === p ? 'selected' : ''}>${p}</option>`).join('')}
         </select>
+      </label><br><br>
+      <label>Note for whoever does the work (optional)<br>
+        <textarea id="allocNote" rows="2" style="width:100%">${escapeHtml(task.note || '')}</textarea>
       </label>
       <p id="allocErr" class="msg error"></p>
       <div class="form-actions"><button class="btn btn-primary" id="allocSubmit">Save</button></div>
@@ -321,6 +326,7 @@ el('activeList').addEventListener('click', (e) => {
           id,
           assignedTo: resolveValue('allocPerson', 'allocPersonOther'),
           priority: el('allocPriority').value,
+          note: el('allocNote').value,
           allocatedBy: state.managerName,
           pin: sessionStorage.getItem('managerPin')
         });
@@ -371,8 +377,8 @@ el('activeList').addEventListener('click', (e) => {
 el('logSearch').addEventListener('input', (e) => renderLog(e.target.value));
 
 el('exportCsvBtn').addEventListener('click', () => {
-  const headers = ['Title', 'Location', 'Priority', 'Requested By', 'Assigned To', 'Completed By', 'Date Requested', 'Date Completed'];
-  const rows = state.log.map((t) => [t.title, t.location, t.priority, t.requestedBy, t.assignedTo, t.completedBy, t.dateRequested, t.dateCompleted]);
+  const headers = ['Title', 'Location', 'Priority', 'Requested By', 'Assigned To', 'Note', 'Completed By', 'Date Requested', 'Date Completed'];
+  const rows = state.log.map((t) => [t.title, t.location, t.priority, t.requestedBy, t.assignedTo, t.note, t.completedBy, t.dateRequested, t.dateCompleted]);
   const csv = [headers, ...rows].map((r) => r.map((v) => `"${String(v || '').replace(/"/g, '""')}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
@@ -382,16 +388,4 @@ el('exportCsvBtn').addEventListener('click', () => {
 });
 
 el('clearLogBtn').addEventListener('click', async () => {
-  if (!confirm('Clear the entire completed log? Export a CSV first if you want to keep a copy.')) return;
-  try {
-    await apiPost({ action: 'clearLog', pin: sessionStorage.getItem('managerPin') });
-    await refresh();
-  } catch (err) {
-    alert(err.message);
-  }
-});
-
-// ---- init ----
-renderManagerUI();
-refresh();
-setInterval(refresh, 15000); // light polling so everyone's view stays fresh
+  if (!confirm('Clear the entire c
