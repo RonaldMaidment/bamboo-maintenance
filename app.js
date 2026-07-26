@@ -1,6 +1,29 @@
 // Backend: a Google Apps Script Web App, backed by a Google Sheet. See README for how to change this URL.
 const API_URL = 'https://script.google.com/macros/s/AKfycbx6FJhgpm2q8EO6HRcoPNCPq9afzsw08CJ1qvCxZfwefE5sp5DryOrFKhVWXAEYpeNNSg/exec';
 
+// ---- dropdown data: edit these lists to add/remove locations or staff ----
+const LOCATIONS = [
+  'Front Outside', 'Front of House', 'Kitchen', 'Bar', 'Garden', 'Terrace',
+  'Main Restaurant', 'Outside Rear', 'Roof', 'Toilets'
+];
+
+const STAFF = [
+  { role: 'Management', names: ['Made Dwi Suryanata', 'Gede Putra Giri Astawa', 'Melon'] },
+  { role: 'Bar', names: ['Ketut Darmayasa', 'Kadek Siwi Sancita', 'Gede Adiari Sudana', 'Putu Ari Astuti'] },
+  { role: 'Cashier', names: ['Ni Putu Endrayati', 'Ni Kadek Alit Candrawati', 'Irma Agustina'] },
+  { role: 'Hostess', names: ['Lisma Kusumayanti', 'Dinny Virginia Bala'] },
+  { role: 'Waitress', names: ['Ni Kadek Dwi Widarini', 'Ni Ketut Sulistiari', 'Cintya', 'Ketut Luwih', 'Komang Karmini', 'Putu Swi', 'Emilia', 'Kori Kadek A Ratna Dewi'] },
+  { role: 'Kitchen', names: ['I Gusti Agung Made Santiyasa', 'Gede Sugandi', 'Ni Nengah Sarrika Inka', 'Wayan Agus Suwandika', 'Kadek Budiasih', 'Kadek Hari', 'Komang Alit Pasek', 'Komang Deni Pertama', 'Putu Irvan Aditya Darma Putra', 'I Komang Wahyu Tri Saputra'] },
+  { role: 'Steward', names: ['Komang Kariana', 'Wayan Sugita', 'I Gede Budi Darmayasa'] },
+  { role: 'Office', names: ['Putu Sumiyati Riastari', 'Ayu Gede Willga'] },
+  { role: 'Security', names: ['I Made Suwera', 'I Komang Gede Dana', 'I Putu Angga Erma Pradika'] },
+  { role: 'Housekeeping', names: ['Ketut Budiastika', 'Iksan Umbu Duka'] },
+  { role: 'Engineering', names: ['Wahyu Helmi Prasetyo'] },
+  { role: 'Directors', names: ['Paul Larsen', 'Ron Maidment', 'Kevin Reynolds'] }
+];
+
+const OTHER_VALUE = '__other__';
+
 const state = {
   active: [],
   log: [],
@@ -15,6 +38,62 @@ function fmtDate(iso) {
   const d = new Date(iso);
   return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) +
     ' ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ---- dropdown helpers ----
+function staffOptionsHtml(selected) {
+  let html = '<option value="">Select name…</option>';
+  STAFF.forEach((group) => {
+    html += `<optgroup label="${escapeHtml(group.role)}">`;
+    group.names.forEach((n) => {
+      html += `<option value="${escapeHtml(n)}" ${n === selected ? 'selected' : ''}>${escapeHtml(n)}</option>`;
+    });
+    html += '</optgroup>';
+  });
+  const isOther = selected && !STAFF.some((g) => g.names.includes(selected));
+  html += `<option value="${OTHER_VALUE}" ${isOther ? 'selected' : ''}>Other (type name)</option>`;
+  return html;
+}
+
+function locationOptionsHtml(selected) {
+  let html = '<option value="">Select location…</option>';
+  LOCATIONS.forEach((loc) => {
+    html += `<option value="${escapeHtml(loc)}" ${loc === selected ? 'selected' : ''}>${escapeHtml(loc)}</option>`;
+  });
+  const isOther = selected && !LOCATIONS.includes(selected);
+  html += `<option value="${OTHER_VALUE}" ${isOther ? 'selected' : ''}>Other</option>`;
+  return html;
+}
+
+// Wires a select + adjacent "other" text input so picking "Other" reveals a free-text field.
+function wireOtherToggle(selectId, otherId, initialOtherValue) {
+  const sel = el(selectId);
+  const other = el(otherId);
+  if (!sel || !other) return;
+  if (initialOtherValue) other.value = initialOtherValue;
+  const sync = () => { other.hidden = sel.value !== OTHER_VALUE; };
+  sel.addEventListener('change', () => {
+    sync();
+    if (sel.value === OTHER_VALUE) other.focus();
+  });
+  sync();
+}
+
+function resolveValue(selectId, otherId) {
+  const sel = el(selectId);
+  const other = el(otherId);
+  return sel.value === OTHER_VALUE ? other.value.trim() : sel.value;
+}
+
+function resetSelectOther(selectId, otherId) {
+  el(selectId).value = '';
+  const other = el(otherId);
+  other.value = '';
+  other.hidden = true;
 }
 
 // GET = list tasks. POST uses text/plain content-type on purpose: it keeps the request
@@ -114,10 +193,6 @@ function renderLog(filter = '') {
   });
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
 // ---- modal helpers ----
 function openModal(title, bodyHtml) {
   el('modalTitle').textContent = title;
@@ -130,22 +205,33 @@ function closeModal() {
 el('modalBackdrop').addEventListener('click', (e) => { if (e.target.id === 'modalBackdrop') closeModal(); });
 
 // ---- request form ----
+el('reqName').innerHTML = staffOptionsHtml('');
+el('reqLocation').innerHTML = locationOptionsHtml('');
+wireOtherToggle('reqName', 'reqNameOther');
+wireOtherToggle('reqLocation', 'reqLocationOther');
+
 el('requestForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const msg = el('requestMsg');
   msg.textContent = '';
   msg.className = 'msg';
+  const requestedBy = resolveValue('reqName', 'reqNameOther');
+  if (!requestedBy) {
+    msg.textContent = 'Please select or enter your name.';
+    msg.className = 'msg error';
+    return;
+  }
   try {
     await apiPost({
       action: 'create',
       title: el('reqTitle').value,
       description: el('reqDescription').value,
-      location: el('reqLocation').value,
-      requestedBy: el('reqName').value
+      location: resolveValue('reqLocation', 'reqLocationOther'),
+      requestedBy
     });
     el('reqTitle').value = '';
     el('reqDescription').value = '';
-    el('reqLocation').value = '';
+    resetSelectOther('reqLocation', 'reqLocationOther');
     msg.textContent = 'Request submitted.';
     msg.className = 'msg success';
     await refresh();
@@ -177,14 +263,18 @@ el('managerBtn').addEventListener('click', () => {
     return;
   }
   openModal('Manager sign-in', `
-    <label>Your name<br><input id="mgrName" type="text" style="width:100%"></label><br><br>
+    <label>Your name<br>
+      <select id="mgrName" style="width:100%">${staffOptionsHtml('')}</select>
+      <input type="text" id="mgrNameOther" class="other-input" style="width:100%" placeholder="Type your name" hidden>
+    </label><br><br>
     <label>Manager PIN<br><input id="mgrPin" type="password" style="width:100%"></label>
     <p id="mgrErr" class="msg error"></p>
     <div class="form-actions"><button class="btn btn-primary" id="mgrSubmit">Sign in</button></div>
   `);
+  wireOtherToggle('mgrName', 'mgrNameOther');
   el('mgrSubmit').addEventListener('click', async () => {
     const pin = el('mgrPin').value;
-    const name = el('mgrName').value.trim();
+    const name = resolveValue('mgrName', 'mgrNameOther');
     try {
       const result = await apiPost({ action: 'verifyPin', pin });
       if (!result.ok) throw new Error(result.error || 'Incorrect PIN.');
@@ -211,7 +301,10 @@ el('activeList').addEventListener('click', (e) => {
   if (action === 'show-allocate') {
     openModal('Allocate task', `
       <p><strong>${escapeHtml(task.title)}</strong></p>
-      <label>Assign to<br><input id="allocPerson" type="text" style="width:100%" value="${escapeHtml(task.assignedTo || '')}"></label><br><br>
+      <label>Assign to<br>
+        <select id="allocPerson" style="width:100%">${staffOptionsHtml(task.assignedTo || '')}</select>
+        <input type="text" id="allocPersonOther" class="other-input" style="width:100%" placeholder="Type name" hidden>
+      </label><br><br>
       <label>Priority<br>
         <select id="allocPriority" style="width:100%">
           ${['Low', 'Medium', 'High', 'Urgent'].map((p) => `<option value="${p}" ${task.priority === p ? 'selected' : ''}>${p}</option>`).join('')}
@@ -220,12 +313,13 @@ el('activeList').addEventListener('click', (e) => {
       <p id="allocErr" class="msg error"></p>
       <div class="form-actions"><button class="btn btn-primary" id="allocSubmit">Save</button></div>
     `);
+    wireOtherToggle('allocPerson', 'allocPersonOther', task.assignedTo && !STAFF.some((g) => g.names.includes(task.assignedTo)) ? task.assignedTo : '');
     el('allocSubmit').addEventListener('click', async () => {
       try {
         await apiPost({
           action: 'allocate',
           id,
-          assignedTo: el('allocPerson').value,
+          assignedTo: resolveValue('allocPerson', 'allocPersonOther'),
           priority: el('allocPriority').value,
           allocatedBy: state.managerName,
           pin: sessionStorage.getItem('managerPin')
@@ -241,13 +335,22 @@ el('activeList').addEventListener('click', (e) => {
   if (action === 'show-complete') {
     openModal('Mark task complete', `
       <p><strong>${escapeHtml(task.title)}</strong></p>
-      <label>Your name<br><input id="compName" type="text" style="width:100%"></label>
+      <label>Your name<br>
+        <select id="compName" style="width:100%">${staffOptionsHtml('')}</select>
+        <input type="text" id="compNameOther" class="other-input" style="width:100%" placeholder="Type your name" hidden>
+      </label>
       <p id="compErr" class="msg error"></p>
       <div class="form-actions"><button class="btn btn-primary" id="compSubmit">Mark complete</button></div>
     `);
+    wireOtherToggle('compName', 'compNameOther');
     el('compSubmit').addEventListener('click', async () => {
+      const completedBy = resolveValue('compName', 'compNameOther');
+      if (!completedBy) {
+        el('compErr').textContent = 'Please select or enter your name.';
+        return;
+      }
       try {
-        await apiPost({ action: 'complete', id, completedBy: el('compName').value });
+        await apiPost({ action: 'complete', id, completedBy });
         closeModal();
         await refresh();
       } catch (err) {
