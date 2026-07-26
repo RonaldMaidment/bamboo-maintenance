@@ -22,7 +22,8 @@
     <form id="requestForm" class="form-grid">
       <label>
         Your name *
-        <input type="text" id="reqName" required placeholder="e.g. Sam Patel">
+        <select id="reqName" required></select>
+        <input type="text" id="reqNameOther" class="other-input" placeholder="Type your name" hidden>
       </label>
       <label>
         Title *
@@ -30,7 +31,8 @@
       </label>
       <label class="span-2">
         Location
-        <input type="text" id="reqLocation" placeholder="e.g. 2nd floor kitchen">
+        <select id="reqLocation"></select>
+        <input type="text" id="reqLocationOther" class="other-input" placeholder="Type location" hidden>
       </label>
       <label class="span-2">
         Details
