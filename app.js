@@ -1,3 +1,6 @@
+No problem — you don't need to download anything. Just copy the code directly from this chat message. Click inside the code block below, press Ctrl+A then Ctrl+C to copy it all, then go to GitHub, open app.js, click the pencil icon, select all and delete the existing content, and paste (Ctrl+V). Commit as before.
+
+javascript
 // Backend: a Google Apps Script Web App, backed by a Google Sheet. See README for how to change this URL.
 const API_URL = 'https://script.google.com/macros/s/AKfycbx6FJhgpm2q8EO6HRcoPNCPq9afzsw08CJ1qvCxZfwefE5sp5DryOrFKhVWXAEYpeNNSg/exec';
 
@@ -388,4 +391,17 @@ el('exportCsvBtn').addEventListener('click', () => {
 });
 
 el('clearLogBtn').addEventListener('click', async () => {
-  if (!confirm('Clear the entire c
+  if (!confirm('Clear the entire completed log? Export a CSV first if you want to keep a copy.')) return;
+  try {
+    await apiPost({ action: 'clearLog', pin: sessionStorage.getItem('managerPin') });
+    await refresh();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+// ---- init ----
+renderManagerUI();
+refresh();
+setInterval(refresh, 15000); // light polling so everyone's view stays fresh
+
