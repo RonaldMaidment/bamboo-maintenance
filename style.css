@@ -86,6 +86,8 @@ input, textarea, select {
 
 textarea { resize: vertical; }
 
+.other-input { margin-top: 6px; }
+
 .form-actions { display: flex; justify-content: flex-end; }
 
 .btn {
