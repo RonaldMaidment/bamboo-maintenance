@@ -1,4 +1,3 @@
-javascript
 // Backend: a Google Apps Script Web App, backed by a Google Sheet. See README for how to change this URL.
 const API_URL = 'https://script.google.com/macros/s/AKfycbx6FJhgpm2q8EO6HRcoPNCPq9afzsw08CJ1qvCxZfwefE5sp5DryOrFKhVWXAEYpeNNSg/exec';
 
@@ -402,7 +401,3 @@ el('clearLogBtn').addEventListener('click', async () => {
 renderManagerUI();
 refresh();
 setInterval(refresh, 15000); // light polling so everyone's view stays fresh
-
-
-
-
