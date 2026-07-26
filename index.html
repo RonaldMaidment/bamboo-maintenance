@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bamboo Maintenance Tracker</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🎍 Bamboo Maintenance Tracker</div>
+  <div class="manager-toggle">
+    <span id="managerStatus" class="manager-status">Team member view</span>
+    <button id="managerBtn" class="btn btn-ghost">Manager sign-in</button>
+  </div>
+</header>
+
+<main class="container">
+
+  <section class="card">
+    <h2>Report a maintenance requirement</h2>
+    <form id="requestForm" class="form-grid">
+      <label>
+        Your name *
+        <input type="text" id="reqName" required placeholder="e.g. Sam Patel">
+      </label>
+      <label>
+        Title *
+        <input type="text" id="reqTitle" required placeholder="e.g. Leaking tap in kitchen">
+      </label>
+      <label class="span-2">
+        Location
+        <input type="text" id="reqLocation" placeholder="e.g. 2nd floor kitchen">
+      </label>
+      <label class="span-2">
+        Details
+        <textarea id="reqDescription" rows="2" placeholder="Any extra detail that will help whoever fixes this"></textarea>
+      </label>
+      <div class="span-2 form-actions">
+        <button type="submit" class="btn btn-primary">Submit request</button>
+      </div>
+    </form>
+    <p id="requestMsg" class="msg"></p>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="active">Active requests <span id="activeCount" class="count"></span></button>
+    <button class="tab-btn" data-tab="log">Completed log <span id="logCount" class="count"></span></button>
+  </nav>
+
+  <section id="tab-active" class="tab-panel">
+    <div id="activeList" class="task-list"></div>
+    <p id="activeEmpty" class="empty-msg" hidden>No active maintenance requests right now.</p>
+  </section>
+
+  <section id="tab-log" class="tab-panel" hidden>
+    <div class="log-toolbar">
+      <input type="text" id="logSearch" placeholder="Search completed tasks...">
+      <button id="exportCsvBtn" class="btn btn-ghost">Export CSV</button>
+      <button id="clearLogBtn" class="btn btn-danger manager-only" hidden>Clear log</button>
+    </div>
+    <table class="log-table">
+      <thead>
+        <tr>
+          <th>Title</th><th>Location</th><th>Priority</th><th>Requested by</th>
+          <th>Assigned to</th><th>Completed by</th><th>Requested</th><th>Completed</th>
+        </tr>
+      </thead>
+      <tbody id="logTableBody"></tbody>
+    </table>
+    <p id="logEmpty" class="empty-msg" hidden>No completed tasks yet.</p>
+  </section>
+
+</main>
+
+<div id="modalBackdrop" class="modal-backdrop" hidden>
+  <div class="modal">
+    <h3 id="modalTitle">Modal</h3>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
